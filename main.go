@@ -24,7 +24,6 @@ func main() {
 	d, err := deta.New(deta.WithProjectKey(key))
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "failed to create new Deta instance")
-		os.Exit(1)
 	}
 
 	ds, err := drive.New(d, "storage")
@@ -59,6 +58,26 @@ func main() {
 		}
 
 		return c.SendString("File uploaded successfully!")
+	})
+
+	app.Get("/download", func(c *fiber.Ctx) error {
+		filename := c.Query("filename")
+
+		result, err := dd.drive.Get(filename)
+		if err != nil {
+			fmt.Println("file not found")
+			return err
+		}
+		defer result.Close()
+
+		c.Set("Content-Disposition", "attachment; filename="+filename)
+
+		err = c.SendStream(result)
+		if err != nil {
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to send file: " + err.Error())
+		}
+
+		return c.SendString("sucessfuly downloaded file")
 	})
 
 	app.Listen(":3000")
